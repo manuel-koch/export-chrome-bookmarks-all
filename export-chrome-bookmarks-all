@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+#
+# Running `export-chrome-bookmarks` for all found Chrome / Brave profiles
+# found in selected directories and exporting bookmarks to HTML file with timestamp
+#
+# See https://github.com/bdesham/chrome-export
+import datetime
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+LIBRARY_DIR = Path.home() / "Library" / "Application Support"
+BROWSER_DIRS = [LIBRARY_DIR / "BraveSoftware", LIBRARY_DIR / "Google" / "Chrome"]
+EXPORT_SCRIPT = "/opt/homebrew/bin/export-chrome-bookmarks"
+EXPORT_DIR = Path.home() / "Documents" / "Bookmarks"
+
+
+def get_browser_and_profile_name_from_profile_directory(profile_dir: Path) -> str:
+    profile = profile_dir.name
+    current_dir = profile_dir
+    name_parts = []
+    while True:
+        local_state_path = current_dir / "Local State"
+        if local_state_path.exists():
+            local_state = json.load(local_state_path.open("r"))
+            profile_name = local_state["profile"]["info_cache"][profile]["name"] or profile
+            name_parts.append(profile_name)
+            if "brave" in [k.lower() for k in local_state.keys()]:
+                name_parts.append("Brave")
+            else:
+                name_parts.append("Chrome")
+            break
+        current_dir = current_dir.parent
+    name_parts.reverse()
+    name = "_".join(name_parts)
+    name = re.subn("\W+", "_", name)[0]  # sanitize
+    name = re.subn("_+", "_", name)[0]  # collapse multiple "_" to one
+    return name
+
+
+if __name__ == "__main__":
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d")
+    for idx, browser_dir in enumerate(BROWSER_DIRS):
+        if idx:
+            print()
+        print(f"Searching bookmarks in {browser_dir}...")
+        for bookmark_path in browser_dir.rglob("Bookmarks"):
+            export_path = EXPORT_DIR / f"bookmarks_{get_browser_and_profile_name_from_profile_directory(bookmark_path.parent)}_{timestamp}.html"
+            print(f"Exporting {bookmark_path}")
+            print(f"To        {export_path}")
+            if not export_path.parent.exists():
+                export_path.parent.mkdir(parents=True)
+            subprocess.check_call([sys.executable, EXPORT_SCRIPT, bookmark_path, export_path])
