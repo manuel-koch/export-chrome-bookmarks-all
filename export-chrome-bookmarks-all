@@ -13,8 +13,14 @@ from pathlib import Path
 
 LIBRARY_DIR = Path.home() / "Library" / "Application Support"
 BROWSER_DIRS = [LIBRARY_DIR / "BraveSoftware", LIBRARY_DIR / "Google" / "Chrome"]
-EXPORT_SCRIPT = "/opt/homebrew/bin/export-chrome-bookmarks"
 EXPORT_DIR = Path.home() / "Documents" / "Bookmarks"
+
+
+def find_export_script():
+    script_name = "export-chrome-bookmarks"
+    script = subprocess.check_output(["which", script_name],encoding="utf8").strip()
+    assert script and Path(script).is_file(), f"Unable to locate {script_name}"
+    return Path(script)
 
 
 def get_browser_and_profile_name_from_profile_directory(profile_dir: Path) -> str:
@@ -35,21 +41,25 @@ def get_browser_and_profile_name_from_profile_directory(profile_dir: Path) -> st
         current_dir = current_dir.parent
     name_parts.reverse()
     name = "_".join(name_parts)
-    name = re.subn("\W+", "_", name)[0]  # sanitize
+    name = re.subn(r"\W+", "_", name)[0]  # sanitize
     name = re.subn("_+", "_", name)[0]  # collapse multiple "_" to one
     return name
 
 
 if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d")
+    export_script = find_export_script()
     for idx, browser_dir in enumerate(BROWSER_DIRS):
         if idx:
             print()
         print(f"Searching bookmarks in {browser_dir}...")
         for bookmark_path in browser_dir.rglob("Bookmarks"):
-            export_path = EXPORT_DIR / f"bookmarks_{get_browser_and_profile_name_from_profile_directory(bookmark_path.parent)}_{timestamp}.html"
+            export_path = (
+                EXPORT_DIR
+                / f"bookmarks_{get_browser_and_profile_name_from_profile_directory(bookmark_path.parent)}_{timestamp}.html"
+            )
             print(f"Exporting {bookmark_path}")
             print(f"To        {export_path}")
             if not export_path.parent.exists():
                 export_path.parent.mkdir(parents=True)
-            subprocess.check_call([sys.executable, EXPORT_SCRIPT, bookmark_path, export_path])
+            subprocess.check_call([sys.executable, export_script, bookmark_path, export_path])
