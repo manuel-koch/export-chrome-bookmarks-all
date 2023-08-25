@@ -31,7 +31,7 @@ def get_browser_and_profile_name_from_profile_directory(profile_dir: Path) -> st
         local_state_path = current_dir / "Local State"
         if local_state_path.exists():
             local_state = json.load(local_state_path.open("r"))
-            profile_name = local_state["profile"]["info_cache"][profile]["name"] or profile
+            profile_name = local_state["profile"]["info_cache"].get(profile, {}).get("name") or profile
             name_parts.append(profile_name)
             if "brave" in [k.lower() for k in local_state.keys()]:
                 name_parts.append("Brave")
