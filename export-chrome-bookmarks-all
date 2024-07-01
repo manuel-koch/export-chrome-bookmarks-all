@@ -54,6 +54,10 @@ if __name__ == "__main__":
             print()
         print(f"Searching bookmarks in {browser_dir}...")
         for bookmark_path in browser_dir.rglob("Bookmarks"):
+            snapshots_dir = bookmark_path.parent.parent.parent
+            if snapshots_dir.name.lower() == "snapshots":
+                print(f"Skipped {bookmark_path}")
+                continue
             export_path = (
                 EXPORT_DIR
                 / f"bookmarks_{get_browser_and_profile_name_from_profile_directory(bookmark_path.parent)}_{timestamp}.html"
